@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#172b4d">
+<title>線上報價單</title>
+<style>
+:root{--ink:#172b4d;--muted:#667085;--line:#e5eaf1;--bg:#f4f7fb;--accent:#2463eb;--danger:#c0392b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#1d2939;font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif}
+header{background:var(--ink);color:white;padding:24px max(20px,calc((100vw - 1040px)/2));}
+header h1{margin:0;font-size:25px}header p{margin:6px 0 0;color:#cbd5e1;font-size:13px}
+main{max-width:1040px;margin:24px auto;padding:0 16px 120px}
+.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 5px 18px #172b4d08}
+.panel h2{font-size:17px;margin:0 0 16px;color:var(--ink)}
+.status{font-size:13px;padding:10px 12px;border-radius:10px;background:#eef4ff;color:#234b93;margin-bottom:16px}
+.status.error{background:#fff0ef;color:#a12b22}.status.ok{background:#ecfdf3;color:#067647}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+label{display:block;font-size:13px;color:#475467;font-weight:650;margin-bottom:6px}
+input,select{width:100%;min-width:0;border:1px solid #d0d5dd;border-radius:9px;padding:11px 12px;font:inherit;background:white;color:#101828}
+input:focus,select:focus{outline:3px solid #2463eb22;border-color:var(--accent)}
+.item{border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0;background:#fff}
+.itemtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.itemtop strong{color:var(--ink)}.remove{border:0;background:#fff1f0;color:var(--danger);padding:7px 10px;border-radius:8px;cursor:pointer}
+.itemgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.product-info{grid-column:1/-1;display:grid;grid-template-columns:2fr .7fr .8fr;gap:10px;background:#f8fafc;padding:10px;border-radius:9px}
+.info span{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}.info b{font-size:14px;overflow-wrap:anywhere}
+.qtyline{display:flex;align-items:end;gap:10px}.qtyline>div{flex:1}
+.btn{border:0;border-radius:10px;padding:12px 17px;font-weight:700;font-size:14px;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--accent);color:white}.secondary{background:#edf2f8;color:var(--ink)}.dark{background:var(--ink);color:white}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.sticky{position:fixed;z-index:10;bottom:0;left:0;right:0;background:#ffffffed;backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:12px max(16px,calc((100vw - 1008px)/2));display:flex;gap:10px;justify-content:flex-end}
+.sticky .btn{min-width:150px}
+.hidden{display:none!important}
+.quote-head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:16px}
+.quote-head h2{font-size:25px;margin:0}.quote-meta{font-size:13px;color:#475467;line-height:1.8}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left}th{background:#f5f7fa;color:#344054}td.num,th.num{text-align:right}
+.totals{margin:16px 0 0 auto;max-width:300px}.totalrow{display:flex;justify-content:space-between;padding:6px 0}.grand{font-size:18px;font-weight:800;border-top:2px solid var(--ink);margin-top:6px;padding-top:12px}
+.note{font-size:12px;color:var(--muted);margin-top:18px}
+@media(max-width:640px){header{padding:20px 16px}main{margin:14px auto;padding:0 12px 125px}.panel{padding:15px}.fields{grid-template-columns:1fr}.itemgrid{grid-template-columns:1fr}.product-info{grid-template-columns:1fr 1fr}.product-info .info:first-child{grid-column:1/-1}.sticky{padding:10px 12px}.sticky .btn{flex:1;min-width:0;padding:13px 8px}.quote-table-wrap{overflow-x:auto}table{min-width:560px}}
+@media print{body{background:white}.no-print,header,.sticky{display:none!important}main{margin:0;padding:0;max-width:none}.panel{border:0;box-shadow:none;padding:0}.quote-panel{display:block!important}}
+</style>
+</head>
+<body>
+<header><h1>線上報價單</h1><p>即時同步產品資料・快速建立正式報價</p></header>
+<main>
+  <div id="status" class="status">正在連線讀取 Google 試算表產品資料…</div>
+  <section class="panel no-print">
+    <h2>客戶與報價資訊</h2>
+    <div class="fields">
+      <div><label for="customer">客戶名稱 *</label><input id="customer" placeholder="請輸入客戶／公司名稱" autocomplete="organization"></div>
+      <div><label for="quoteDate">報價日期</label><input id="quoteDate" type="date"></div>
+      <div><label for="contact">聯絡人（選填）</label><input id="contact" placeholder="聯絡人姓名"></div>
+      <div><label for="phone">電話／Email（選填）</label><input id="phone" placeholder="聯絡方式"></div>
+    </div>
+  </section>
+  <section class="panel no-print">
+    <h2>報價品項</h2>
+    <div id="items"></div>
+    <div class="actions"><button id="addBtn" class="btn secondary" disabled>＋ 新增品項</button></div>
+  </section>
+  <section id="quotePanel" class="panel quote-panel hidden">
+    <div id="quoteOutput"></div>
+    <div class="actions no-print">
+      <button id="pdfBtn" class="btn primary">下載 PDF</button>
+      <button id="shareBtn" class="btn secondary">分享報價單</button>
+    </div>
+    <p class="note no-print">手機可使用「分享報價單」開啟系統分享選單，再選擇 LINE、Email 等 App。若瀏覽器不支援檔案分享，請先下載 PDF 再自行附加。</p>
+  </section>
+</main>
+<div class="sticky no-print">
+  <button id="stickyAdd" class="btn secondary" disabled>＋ 新增品項</button>
+  <button id="generateBtn" class="btn primary" disabled>產生報價單</button>
+</div>
+<script>
+(() => {
+  "use strict";
+  const SHEET_ID = "19FiN1yVL8cIK-zIhUirbmlnw0fquNOpiIZSq3erkoGg";
+  const GID = "0";
+  const TAX_RATE = 0.05;
+  let products = [];
+  let quoteBlob = null;
+  let quoteFilename = "";
+  const $ = id => document.getElementById(id);
+  const money = n => new Intl.NumberFormat("zh-TW",{style:"currency",currency:"TWD",maximumFractionDigits:0}).format(Number(n)||0);
+  const today = new Date();
+  $("quoteDate").value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+
+  function setStatus(message, type="") {
+    $("status").textContent = message;
+    $("status").className = "status " + type;
+  }
+  function loadProducts() {
+    const callback = "gvizProductsCallback";
+    window[callback] = response => {
+      try {
+        const table = response && response.table;
+        if (!table || !Array.isArray(table.rows)) throw new Error("試算表沒有可讀取的資料");
+        const cols = table.cols.map(c => String(c.label || c.id || "").trim().toLowerCase());
+        const required = ["type","pno","pname","unit","price"];
+        const indexes = Object.fromEntries(required.map(k => [k, cols.indexOf(k)]));
+        if (required.some(k => indexes[k] < 0)) throw new Error("找不到必要欄位，請確認第一列欄位為 type、pno、pname、unit、price");
+        products = table.rows.map(row => {
+          const v = indexes;
+          const get = k => {
+            const cell = row.c && row.c[v[k]];
+            return cell ? (k === "price" ? (cell.v ?? cell.f ?? "") : (cell.f ?? cell.v ?? "")) : "";
+          };
+          return {type:String(get("type")).trim(),pno:String(get("pno")).trim(),pname:String(get("pname")).trim(),unit:String(get("unit")).trim(),price:Number(String(get("price")).replace(/[,，$元\s]/g,""))};
+        }).filter(p => p.type && p.pno && p.pname && Number.isFinite(p.price));
+        if (!products.length) throw new Error("試算表讀取成功，但沒有有效產品資料");
+        setStatus(`產品資料載入成功，共 ${products.length} 筆。每次開啟頁面都會即時讀取試算表。`,"ok");
+        $("addBtn").disabled = $("stickyAdd").disabled = $("generateBtn").disabled = false;
+        addItem();
+      } catch (err) { fail(err.message || "資料格式錯誤"); }
+      finally { delete window[callback]; }
+    };
+    const script = document.createElement("script");
+    script.onerror = () => { delete window[callback]; fail("無法讀取 Google 試算表。請確認檔案已設為「知道連結的任何人可檢視」，且工作表 gid 正確。"); };
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${callback}&gid=${encodeURIComponent(GID)}&headers=1`;
+    script.src = url;
+    document.head.appendChild(script);
+  }
+  function fail(message) {
+    products = [];
+    setStatus("產品資料讀取失敗：" + message + "。請檢查網路、分享權限及欄位名稱後重新整理頁面。","error");
+    $("addBtn").disabled = $("stickyAdd").disabled = $("generateBtn").disabled = true;
+    $("items").innerHTML = "";
+  }
+  function categories() { return [...new Set(products.map(p=>p.type))].sort((a,b)=>a.localeCompare(b,"zh-Hant")); }
+  function addItem() {
+    if (!products.length) return;
+    const id = "item-" + Math.random().toString(36).slice(2,9);
+    const el = document.createElement("div");
+    el.className = "item"; el.dataset.id = id;
+    el.innerHTML = `
+      <div class="itemtop"><strong class="item-title">品項</strong><button type="button" class="remove">移除此品項</button></div>
+      <div class="itemgrid">
+        <div><label>類別</label><select class="category"><option value="">請選擇類別</option></select></div>
+        <div><label>產品編號</label><select class="pno" disabled><option value="">請先選擇類別</option></select></div>
+        <div class="product-info">
+          <div class="info"><span>品名</span><b class="pname">—</b></div>
+          <div class="info"><span>單位</span><b class="unit">—</b></div>
+          <div class="info"><span>單價</span><b class="price">—</b></div>
+        </div>
+        <div class="qtyline"><div><label>數量（輸入 0 將刪除此品項）</label><input class="qty" type="number" min="0" step="1" placeholder="輸入數量" inputmode="numeric"></div></div>
+      </div>`;
+    const cat = el.querySelector(".category");
+    categories().forEach(c=>{const o=document.createElement("option");o.value=c;o.textContent=c;cat.appendChild(o);});
+    cat.addEventListener("change",()=>{
+      const sel=el.querySelector(".pno"); sel.innerHTML='<option value="">請選擇編號</option>';
+      products.filter(p=>p.type===cat.value).forEach(p=>{const o=document.createElement("option");o.value=p.pno;o.textContent=p.pno;sel.appendChild(o);});
+      sel.disabled=!cat.value; clearProduct(el);
+    });
+    el.querySelector(".pno").addEventListener("change",()=>{
+      const p=products.find(p=>p.type===cat.value&&p.pno===el.querySelector(".pno").value);
+      el.dataset.product = p ? JSON.stringify(p) : "";
+      el.querySelector(".pname").textContent=p?.pname||"—";
+      el.querySelector(".unit").textContent=p?.unit||"—";
+      el.querySelector(".price").textContent=p?money(p.price):"—";
+      el.querySelector(".qty").value="";
+    });
+    el.querySelector(".qty").addEventListener("change",e=>{
+      const q=Number(e.target.value);
+      if (e.target.value!=="" && q===0) {el.remove(); renumber();}
+      else if (q<0) e.target.value="";
+    });
+    el.querySelector(".remove").addEventListener("click",()=>{el.remove();renumber();});
+    $("items").appendChild(el); renumber();
+  }
+  function clearProduct(el){el.dataset.product="";el.querySelector(".pname").textContent="—";el.querySelector(".unit").textContent="—";el.querySelector(".price").textContent="—";el.querySelector(".qty").value="";}
+  function renumber(){[...$("items").children].forEach((el,i)=>el.querySelector(".item-title").textContent=`品項 ${i+1}`);}
+  $("addBtn").addEventListener("click",addItem); $("stickyAdd").addEventListener("click",addItem);
+  function collectItems(){
+    return [...$("items").children].map(el=>{
+      let p; try{p=JSON.parse(el.dataset.product||"null");}catch(_){}
+      const qty=Number(el.querySelector(".qty").value);
+      if(!p || !Number.isFinite(qty) || qty<=0) return null;
+      return {...p,qty,amount:p.price*qty};
+    }).filter(Boolean);
+  }
+  function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+  function buildQuote(){
+    const customer=$("customer").value.trim(), items=collectItems();
+    if(!customer){alert("請先填寫客戶名稱。");$("customer").focus();return;}
+    if(!items.length){alert("請至少選擇一項產品並輸入大於 0 的數量。");return;}
+    const subtotal=items.reduce((s,p)=>s+p.amount,0), tax=Math.round(subtotal*TAX_RATE), total=subtotal+tax;
+    const date=$("quoteDate").value || $("quoteDate").value;
+    const dateText=date || new Date().toISOString().slice(0,10);
+    quoteFilename=`報價單_${customer.replace(/[\\/:*?"<>|]/g,"_")}_${dateText.replace(/-/g,"")}.pdf`;
+    $("quoteOutput").innerHTML=`
+      <div class="quote-head"><div><h2>報價單</h2><div class="quote-meta">客戶名稱：${escapeHtml(customer)}<br>聯絡人：${escapeHtml($("contact").value||"—")}<br>聯絡方式：${escapeHtml($("phone").value||"—")}</div></div>
+      <div class="quote-meta">報價日期：${escapeHtml(dateText)}<br>報價單號：QT-${dateText.replace(/-/g,"")}-${String(Date.now()).slice(-4)}</div></div>
+      <div class="quote-table-wrap"><table><thead><tr><th>項次</th><th>產品編號</th><th>品名</th><th>單位</th><th class="num">數量</th><th class="num">單價</th><th class="num">小計</th></tr></thead><tbody>
+      ${items.map((p,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(p.pno)}</td><td>${escapeHtml(p.pname)}</td><td>${escapeHtml(p.unit)}</td><td class="num">${p.qty}</td><td class="num">${money(p.price)}</td><td class="num">${money(p.amount)}</td></tr>`).join("")}
+      </tbody></table></div>
+      <div class="totals"><div class="totalrow"><span>未稅小計</span><b>${money(subtotal)}</b></div><div class="totalrow"><span>營業稅（5%）</span><b>${money(tax)}</b></div><div class="totalrow grand"><span>含稅總計</span><b>${money(total)}</b></div></div>
+      <p class="note">備註：本報價單金額以新台幣計價；營業稅依未稅小計計算 5%。</p>`;
+    $("quotePanel").classList.remove("hidden");
+    $("quotePanel").scrollIntoView({behavior:"smooth",block:"start"});
+    return {items,subtotal,tax,total,customer,dateText};
+  }
+  function loadScript(src, test) {
+    return new Promise((resolve,reject)=>{
+      if(test()){resolve();return;}
+      const s=document.createElement("script");s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error("PDF 元件載入失敗，請確認網路連線"));document.head.appendChild(s);
+    });
+  }
+  async function makePdf(){
+    const data=buildQuote(); if(!data)return null;
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",()=>!!window.html2canvas);
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",()=>!!window.jspdf?.jsPDF);
+    const target=$("quoteOutput");
+    const canvas=await html2canvas(target,{scale:2,backgroundColor:"#ffffff",useCORS:true,logging:false,windowWidth:Math.max(target.scrollWidth,760)});
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({unit:"mm",format:"a4",orientation:"portrait"});
+    const pageW=doc.internal.pageSize.getWidth()-20, pageH=doc.internal.pageSize.getHeight()-20;
+    const pxPerMm=canvas.width/pageW;
+    const sliceHeight=Math.floor(pageH*pxPerMm);
+    let y=0, page=0;
+    while(y<canvas.height){
+      if(page>0)doc.addPage();
+      const h=Math.min(sliceHeight,canvas.height-y);
+      const part=document.createElement("canvas");part.width=canvas.width;part.height=h;
+      part.getContext("2d").drawImage(canvas,0,y,canvas.width,h,0,0,canvas.width,h);
+      const img=part.toDataURL("image/jpeg",0.94);
+      const drawH=h/pxPerMm;
+      doc.addImage(img,"JPEG",10,10,pageW,drawH,undefined,"FAST");
+      y+=h;page++;
+    }
+    quoteBlob=doc.output("blob");
+    return quoteBlob;
+  }
+  $("generateBtn").addEventListener("click",()=>buildQuote());
+  $("pdfBtn").addEventListener("click",async()=>{
+    try{const blob=await makePdf();if(!blob)return;const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=quoteFilename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);}
+    catch(e){alert(e.message||"PDF 產生失敗");}
+  });
+  $("shareBtn").addEventListener("click",async()=>{
+    try{
+      const blob=await makePdf();if(!blob)return;
+      const file=new File([blob],quoteFilename,{type:"application/pdf"});
+      if(navigator.canShare?.({files:[file]}) && navigator.share){await navigator.share({title:"報價單",text:"報價單 PDF",files:[file]});}
+      else {const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=quoteFilename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);alert("此瀏覽器不支援直接分享 PDF，已改為下載檔案。下載後可附加至 LINE 或 Email。");}
+    }catch(e){if(e.name!=="AbortError")alert(e.message||"分享失敗，請改用下載 PDF。");}
+  });
+  loadProducts();
+})();
+</script>
+</body>
+</html>
